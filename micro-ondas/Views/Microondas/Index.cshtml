@@ -1,0 +1,302 @@
+﻿@{
+    ViewData["Title"] = "Micro-ondas";
+}
+
+<div class="microondas">
+    <div class="porta">
+        <div id="stringAquecimento"></div>
+    </div>
+
+    <div class="painel">
+        <div class="display">
+            <div id="tempoDisplay">0:00</div>
+            <small id="estadoDisplay">Parado</small>
+        </div>
+
+        <input id="tempo" type="number" placeholder="Tempo em segundos" min="1" max="120" />
+        <input id="potencia" type="number" placeholder="Potência padrão: 10" min="1" max="10" />
+
+        <div class="teclado">
+            <button type="button" onclick="digitar('1')">1</button>
+            <button type="button" onclick="digitar('2')">2</button>
+            <button type="button" onclick="digitar('3')">3</button>
+            <button type="button" onclick="digitar('4')">4</button>
+            <button type="button" onclick="digitar('5')">5</button>
+            <button type="button" onclick="digitar('6')">6</button>
+            <button type="button" onclick="digitar('7')">7</button>
+            <button type="button" onclick="digitar('8')">8</button>
+            <button type="button" onclick="digitar('9')">9</button>
+            <button type="button" onclick="selecionarCampo('tempo')">T</button>
+            <button type="button" onclick="digitar('0')">0</button>
+            <button type="button" onclick="selecionarCampo('potencia')">P</button>
+        </div>
+
+        <button type="button" class="iniciar" onclick="iniciar()">Iniciar</button>
+        <button type="button" class="cancelar" onclick="pausarOuCancelar()">Pausar / Cancelar</button>
+
+        <p id="mensagemErro"></p>
+    </div>
+</div>
+
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        background: #222;
+    }
+
+    .microondas {
+        width: 760px;
+        min-height: 420px;
+        margin: 40px auto;
+        padding: 25px;
+        background: #d8d8d8;
+        border: 8px solid #444;
+        border-radius: 16px;
+        display: flex;
+        gap: 24px;
+    }
+
+    .porta {
+        flex: 1;
+        background: #111;
+        border: 10px solid #333;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+        color: #ffcc66;
+        overflow: auto;
+    }
+
+    .visor-aquecimento {
+        width: 100%;
+        height: 280px;
+        font-size: 20px;
+        line-height: 32px;
+        word-break: break-word;
+    }
+
+    .painel {
+        width: 240px;
+        background: #2c2c2c;
+        border-radius: 10px;
+        padding: 18px;
+        color: white;
+    }
+
+    .display {
+        background: #050505;
+        color: #00ff88;
+        border-radius: 6px;
+        padding: 12px;
+        text-align: right;
+        margin-bottom: 14px;
+    }
+
+    #tempoDisplay {
+        font-size: 34px;
+        font-weight: bold;
+    }
+
+    #estadoDisplay {
+        color: #ccc;
+    }
+
+    label {
+        display: block;
+        margin-top: 10px;
+        font-size: 13px;
+    }
+
+    input {
+        width: 100%;
+        height: 34px;
+        margin-top: 4px;
+        padding: 6px;
+        border-radius: 5px;
+        border: none;
+        font-size: 18px;
+        box-sizing: border-box;
+    }
+
+    .teclado {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
+        margin-top: 16px;
+    }
+
+    button {
+        height: 44px;
+        border: none;
+        border-radius: 6px;
+        font-size: 17px;
+        font-weight: bold;
+        cursor: pointer;
+    }
+
+    .teclado button {
+        background: #555;
+        color: white;
+    }
+
+    .iniciar {
+        width: 100%;
+        margin-top: 14px;
+        background: #22aa55;
+        color: white;
+    }
+
+    .pausar {
+        width: 100%;
+        margin-top: 8px;
+        background: #d99a22;
+        color: white;
+    }
+
+    .limpar {
+        width: 100%;
+        margin-top: 8px;
+        background: #aa3333;
+        color: white;
+    }
+
+    .erro {
+        color: #ff7777;
+        min-height: 20px;
+        font-size: 13px;
+    }
+</style>
+
+<script>
+    let campoSelecionado = "tempo";
+    let intervalo = null;
+
+    function selecionarCampo(campo) {
+        campoSelecionado = campo;
+        document.getElementById(campo).focus();
+    }
+
+    function digitar(numero) {
+        const campo = document.getElementById(campoSelecionado);
+        campo.value = `${campo.value}${numero}`;
+    }
+
+    async function iniciar() {
+        limparErro();
+
+        const tempoTexto = document.getElementById("tempo").value;
+        const potenciaTexto = document.getElementById("potencia").value;
+
+        const formData = new URLSearchParams();
+
+        if (tempoTexto) {
+            formData.append("tempo", tempoTexto);
+        }
+
+        if (potenciaTexto) {
+            formData.append("potencia", potenciaTexto);
+        }
+
+        const resposta = await fetch("/Microondas/Iniciar", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/x-www-form-urlencoded"
+            },
+            body: formData
+        });
+
+        if (!resposta.ok) {
+            const erro = await resposta.json();
+            mostrarErro(erro.mensagem);
+            return;
+        }
+
+        const dados = await resposta.json();
+        atualizarTela(dados);
+        iniciarContador();
+    }
+    async function processarSegundo() {
+        const resposta = await fetch("/Microondas/ProcessarSegundo", {
+            method: "POST"
+        });
+
+        const dados = await resposta.json();
+        atualizarTela(dados);
+
+        if (dados.estado !== "Aquecendo") {
+            pararContador();
+        }
+    }
+
+    async function pausarOuCancelar() {
+        const resposta = await fetch("/Microondas/PausarOuCancelar", {
+            method: "POST"
+        });
+
+        const dados = await resposta.json();
+        atualizarTela(dados);
+
+        if (dados.estado === "Aquecendo") {
+            iniciarContador();
+        } else {
+            pararContador();
+        }
+
+        if (dados.estado === "Parado") {
+            limparCampos();
+        }
+    }
+
+    async function limpar() {
+        await fetch("/Microondas/Limpar", {
+            method: "POST"
+        });
+
+        pararContador();
+        limparCampos();
+        atualizarTela({
+            tempoFormatado: "0:00",
+            potencia: 10,
+            estado: "Parado",
+            stringAquecimento: ""
+        });
+    }
+
+    function iniciarContador() {
+        if (intervalo !== null)
+            return;
+
+        intervalo = setInterval(processarSegundo, 1000);
+    }
+
+    function pararContador() {
+        clearInterval(intervalo);
+        intervalo = null;
+    }
+
+    function atualizarTela(dados) {
+        document.getElementById("tempoDisplay").innerText = dados.tempoFormatado;
+        document.getElementById("estadoDisplay").innerText = `Potência ${dados.potencia} | ${dados.estado}`;
+        document.getElementById("stringAquecimento").innerText = dados.stringAquecimento;
+
+        if (!document.getElementById("potencia").value) {
+            document.getElementById("potencia").value = dados.potencia;
+        }
+    }
+
+    function limparCampos() {
+        document.getElementById("tempo").value = "";
+        document.getElementById("potencia").value = "";
+        document.getElementById("stringAquecimento").innerText = "";
+    }
+
+    function mostrarErro(mensagem) {
+        document.getElementById("mensagemErro").innerText = mensagem;
+    }
+
+    function limparErro() {
+        document.getElementById("mensagemErro").innerText = "";
+    }
+</script>

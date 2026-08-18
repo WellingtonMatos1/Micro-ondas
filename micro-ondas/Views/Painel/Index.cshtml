@@ -1,0 +1,729 @@
+@using micro_ondas.Models
+@{
+    Layout = null;
+    ViewData["Title"] = "Micro-ondas";
+    var programas = ViewBag.Programas as IReadOnlyList<ProgramaAquecimento> ?? Array.Empty<ProgramaAquecimento>();
+}
+
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Micro-ondas</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            min-height: 100vh;
+            margin: 0;
+            padding: 18px;
+            background: #25272b;
+            font-family: Arial, Helvetica, sans-serif;
+            display: flex;
+            align-items: flex-start;
+            justify-content: center;
+        }
+
+        .microondas {
+            width: min(1160px, 100%);
+            padding: 16px;
+            background: #d8d8d8;
+            border: 8px solid #3f4146;
+            border-radius: 14px;
+            box-shadow: 0 18px 50px rgba(0, 0, 0, 0.38);
+            display: grid;
+            grid-template-columns: minmax(340px, 1fr) 260px 320px;
+            gap: 16px;
+        }
+
+        .porta {
+            min-height: 400px;
+            padding: 18px;
+            background: #11151a;
+            border: 10px solid #30333a;
+            border-radius: 10px;
+            color: #ffd36a;
+            overflow: auto;
+        }
+
+        .saida-aquecimento {
+            min-height: 100%;
+            font-size: 18px;
+            line-height: 30px;
+            word-break: break-word;
+        }
+
+        .painel,
+        .programas-area {
+            padding: 14px;
+            background: #2b2f36;
+            color: #fff;
+            border-radius: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .programas-area {
+            max-height: 440px;
+            overflow-y: auto;
+        }
+
+        .display {
+            min-height: 68px;
+            padding: 10px;
+            background: #050706;
+            border: 2px solid #111;
+            border-radius: 6px;
+            color: #00ff88;
+            text-align: right;
+        }
+
+        .tempo-display {
+            font-size: 32px;
+            font-weight: 700;
+            line-height: 1;
+        }
+
+        .estado-display {
+            display: block;
+            margin-top: 8px;
+            color: #b9c8c0;
+            font-size: 13px;
+        }
+
+        .campo-grupo {
+            display: grid;
+            gap: 4px;
+        }
+
+        label,
+        .titulo-botoes {
+            color: #d8d8d8;
+            font-size: 13px;
+            font-weight: 700;
+        }
+
+        input {
+            width: 100%;
+            height: 34px;
+            padding: 8px 10px;
+            border: 0;
+            border-radius: 6px;
+            outline: none;
+            font-size: 15px;
+        }
+
+        input[readonly] {
+            background: #d5dbe1;
+            color: #39404a;
+            cursor: not-allowed;
+        }
+
+        input.campo-ativo {
+            outline: 3px solid #00ff88;
+        }
+
+        .teclado {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 6px;
+        }
+
+        .programas {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 7px;
+        }
+
+        button {
+            min-height: 40px;
+            border: 0;
+            border-radius: 6px;
+            font-size: 15px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        button:disabled {
+            opacity: 0.45;
+            cursor: not-allowed;
+        }
+
+        .teclado button,
+        .programa-botao,
+        .botao-funcao {
+            background: #565d68;
+            color: #fff;
+        }
+
+        .teclado button:hover:not(:disabled),
+        .programa-botao:hover:not(:disabled),
+        .botao-funcao:hover:not(:disabled) {
+            background: #68717d;
+        }
+
+        .programa-botao {
+            width: 100%;
+            min-height: 50px;
+            padding: 6px 28px 6px 6px;
+            border: 2px solid transparent;
+            font-size: 12px;
+            line-height: 16px;
+        }
+
+        .programa-botao.selecionado {
+            background: #1f4a3a;
+            border-color: #00ff88;
+        }
+
+        .programa-botao.customizado {
+            font-style: italic;
+        }
+
+        .programa-item {
+            position: relative;
+        }
+
+        .remover-programa {
+            position: absolute;
+            top: 4px;
+            right: 4px;
+            width: 22px;
+            min-height: 22px;
+            padding: 0;
+            background: #933;
+            color: #fff;
+            font-size: 13px;
+            line-height: 22px;
+        }
+
+        .programa-tempo {
+            display: block;
+            color: #dce5ef;
+            font-size: 11px;
+            font-weight: 400;
+        }
+
+        .cadastro-programa {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+            margin-top: 8px;
+            padding-top: 2px;
+        }
+
+        .cadastro-programa input {
+            height: 32px;
+            font-size: 12px;
+        }
+
+        .cadastro-programa .campo-largo {
+            grid-column: 1 / -1;
+        }
+
+        .botao-cadastrar {
+            grid-column: 1 / -1;
+            min-height: 38px;
+            background: #315f7c;
+            color: #fff;
+            font-size: 14px;
+        }
+
+        .cadastro-box {
+            border-top: 1px solid #444b55;
+            padding-top: 8px;
+        }
+
+        .cadastro-box summary {
+            color: #d8d8d8;
+            font-size: 13px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        .botao-iniciar {
+            margin-top: 2px;
+            background: #1f9d55;
+            color: #fff;
+        }
+
+        .botao-pausar {
+            background: #c0392b;
+            color: #fff;
+        }
+
+        .instrucoes {
+            min-height: 60px;
+            padding: 10px;
+            background: #1e2228;
+            border-radius: 6px;
+            color: #dce5ef;
+            font-size: 12px;
+            line-height: 18px;
+        }
+
+        .mensagem-erro {
+            min-height: 20px;
+            margin: 0;
+            color: #ff8c8c;
+            font-size: 13px;
+        }
+
+        @@media (max-width: 1080px) {
+            .microondas {
+                grid-template-columns: 1fr 300px;
+            }
+
+            .programas-area {
+                grid-column: 1 / -1;
+                max-height: none;
+            }
+        }
+
+        @@media (max-width: 760px) {
+            .microondas {
+                grid-template-columns: 1fr;
+            }
+
+            .porta {
+                min-height: 240px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <main class="microondas">
+        <section class="porta" aria-label="Porta do micro-ondas">
+            <div class="saida-aquecimento" id="stringAquecimento"></div>
+        </section>
+
+        <section class="painel" aria-label="Painel de controle">
+            <div class="display">
+                <div class="tempo-display" id="tempoDisplay">0:00</div>
+                <span class="estado-display" id="estadoDisplay">Potencia 10 | Parado</span>
+            </div>
+
+            <div class="campo-grupo">
+                <label for="tempo">Tempo em segundos</label>
+                <input id="tempo" class="campo-ativo" type="number" min="1" max="120" inputmode="numeric" />
+            </div>
+
+            <div class="campo-grupo">
+                <label for="potencia">Potencia</label>
+                <input id="potencia" type="number" min="1" max="10" inputmode="numeric" placeholder="10" />
+            </div>
+
+            <div class="teclado">
+                <button type="button" data-tecla onclick="digitar('1')">1</button>
+                <button type="button" data-tecla onclick="digitar('2')">2</button>
+                <button type="button" data-tecla onclick="digitar('3')">3</button>
+                <button type="button" data-tecla onclick="digitar('4')">4</button>
+                <button type="button" data-tecla onclick="digitar('5')">5</button>
+                <button type="button" data-tecla onclick="digitar('6')">6</button>
+                <button type="button" data-tecla onclick="digitar('7')">7</button>
+                <button type="button" data-tecla onclick="digitar('8')">8</button>
+                <button type="button" data-tecla onclick="digitar('9')">9</button>
+                <button type="button" class="botao-funcao" data-tecla onclick="selecionarCampo('tempo')">Tempo</button>
+                <button type="button" data-tecla onclick="digitar('0')">0</button>
+                <button type="button" class="botao-funcao" data-tecla onclick="selecionarCampo('potencia')">Pot.</button>
+                <button type="button" class="botao-funcao" data-tecla onclick="apagar()">Apagar</button>
+                <button type="button" class="botao-funcao" onclick="limpar()">Limpar</button>
+                <button type="button" class="botao-funcao" data-tecla onclick="inicioRapido()">+30s</button>
+            </div>
+
+            <button type="button" class="botao-iniciar" onclick="iniciar()">Iniciar</button>
+            <button type="button" class="botao-pausar" onclick="pausarOuCancelar()">Pausar / Cancelar</button>
+
+            <p class="mensagem-erro" id="mensagemErro"></p>
+        </section>
+
+        <aside class="programas-area" aria-label="Programas de aquecimento">
+            <span class="titulo-botoes">Programas</span>
+            <div class="programas" id="programas">
+                @* Programas fixos e customizados montados como botoes do proprio painel. *@
+                @foreach (var programa in programas)
+                {
+                    <div class="programa-item">
+                        <button type="button"
+                                class="programa-botao @(programa.Customizado ? "customizado" : "")"
+                                data-programa-id="@programa.Id"
+                                title="@programa.Instrucoes"
+                                onclick="selecionarPrograma('@programa.Id')">
+                            @programa.Nome
+                            <span class="programa-tempo">@TimeSpan.FromSeconds(programa.TempoSegundos).ToString(@"m\:ss") | P @programa.Potencia</span>
+                        </button>
+
+                        @if (programa.Customizado)
+                        {
+                            <button type="button"
+                                    class="remover-programa"
+                                    title="Remover programa"
+                                    onclick="removerPrograma('@programa.Id')">
+                                x
+                            </button>
+                        }
+                    </div>
+                }
+            </div>
+
+            <details class="cadastro-box">
+                <summary>Novo programa</summary>
+                <div class="cadastro-programa">
+                    <input id="novoNome" type="text" placeholder="Nome" />
+                    <input id="novoAlimento" type="text" placeholder="Alimento" />
+                    <input id="novoTempo" type="number" min="1" placeholder="Tempo seg." />
+                    <input id="novaPotencia" type="number" min="1" max="10" placeholder="Potencia" />
+                    <input id="novoCaractere" type="text" maxlength="1" placeholder="Caractere" />
+                    <input id="novasInstrucoes" class="campo-largo" type="text" placeholder="Instrucoes opcionais" />
+                    <button type="button" class="botao-cadastrar" onclick="cadastrarPrograma()">Cadastrar programa</button>
+                </div>
+            </details>
+
+            <div class="instrucoes" id="instrucoesPrograma">
+                Selecione um programa para ver as instrucoes.
+            </div>
+        </aside>
+    </main>
+
+        <script>
+        let campoSelecionado = "tempo";
+        let intervalo = null;
+        let programaSelecionado = false;
+
+        // Referencias dos elementos que serao atualizados a cada ação do usuário.
+        const tempoInput = document.getElementById("tempo");
+        const potenciaInput = document.getElementById("potencia");
+        const tempoDisplay = document.getElementById("tempoDisplay");
+        const estadoDisplay = document.getElementById("estadoDisplay");
+        const stringAquecimento = document.getElementById("stringAquecimento");
+        const mensagemErro = document.getElementById("mensagemErro");
+        const instrucoesPrograma = document.getElementById("instrucoesPrograma");
+        const programasContainer = document.getElementById("programas");
+        const novoNomeInput = document.getElementById("novoNome");
+        const novoAlimentoInput = document.getElementById("novoAlimento");
+        const novoTempoInput = document.getElementById("novoTempo");
+        const novaPotenciaInput = document.getElementById("novaPotencia");
+        const novoCaractereInput = document.getElementById("novoCaractere");
+        const novasInstrucoesInput = document.getElementById("novasInstrucoes");
+
+        tempoInput.addEventListener("focus", () => selecionarCampo("tempo"));
+        potenciaInput.addEventListener("focus", () => selecionarCampo("potencia"));
+
+        function selecionarCampo(campo) {
+            if (programaSelecionado) {
+                return;
+            }
+
+            campoSelecionado = campo;
+            tempoInput.classList.toggle("campo-ativo", campo === "tempo");
+            potenciaInput.classList.toggle("campo-ativo", campo === "potencia");
+            document.getElementById(campo).focus();
+        }
+
+        function digitar(numero) {
+            if (programaSelecionado) {
+                return;
+            }
+
+            const campo = document.getElementById(campoSelecionado);
+            campo.value = `${campo.value}${numero}`;
+        }
+
+        function apagar() {
+            if (programaSelecionado) {
+                return;
+            }
+
+            const campo = document.getElementById(campoSelecionado);
+            campo.value = campo.value.slice(0, -1);
+        }
+
+        function inicioRapido() {
+            if (programaSelecionado) {
+                return;
+            }
+
+            tempoInput.value = "";
+            potenciaInput.value = "";
+            iniciar();
+        }
+
+        async function selecionarPrograma(programaId) {
+            limparErro();
+
+            // A seleção do programa acontece no servidor para manter a regra na camada de negócio.
+            const dados = new URLSearchParams();
+            dados.append("programaId", programaId);
+
+            const resposta = await fetch("/Painel/SelecionarPrograma", {
+                method: "POST",
+                headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                body: dados
+            });
+
+            if (!resposta.ok) {
+                const erro = await resposta.json();
+                mostrarErro(erro.mensagem);
+                return;
+            }
+
+            atualizarTela(await resposta.json());
+        }
+
+        async function cadastrarPrograma() {
+            limparErro();
+
+            const dados = new URLSearchParams();
+            dados.append("nome", novoNomeInput.value);
+            dados.append("alimento", novoAlimentoInput.value);
+            dados.append("tempoSegundos", novoTempoInput.value);
+            dados.append("potencia", novaPotenciaInput.value);
+            dados.append("caractereAquecimento", novoCaractereInput.value);
+            dados.append("instrucoes", novasInstrucoesInput.value);
+
+            const resposta = await fetch("/Painel/CadastrarPrograma", {
+                method: "POST",
+                headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                body: dados
+            });
+
+            const resultado = await resposta.json();
+
+            if (!resposta.ok) {
+                mostrarErro(resultado.mensagem);
+                return;
+            }
+
+            renderizarProgramas(resultado.programas);
+            limparCadastro();
+            instrucoesPrograma.innerText = resultado.mensagem;
+        }
+
+        async function removerPrograma(programaId) {
+            limparErro();
+
+            if (!confirm("Remover este programa customizado?")) {
+                return;
+            }
+
+            const dados = new URLSearchParams();
+            dados.append("programaId", programaId);
+
+            const resposta = await fetch("/Painel/RemoverPrograma", {
+                method: "POST",
+                headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                body: dados
+            });
+
+            const resultado = await resposta.json();
+
+            if (!resposta.ok) {
+                mostrarErro(resultado.mensagem);
+                return;
+            }
+
+            renderizarProgramas(resultado.programas);
+            atualizarTela(resultado.estado);
+            instrucoesPrograma.innerText = resultado.mensagem;
+        }
+
+        async function iniciar() {
+            limparErro();
+
+            const dados = new URLSearchParams();
+
+            // Programas selecionados já possuem tempo e potência, então não enviam entrada manual.
+            if (!programaSelecionado) {
+                if (tempoInput.value) {
+                    dados.append("tempo", tempoInput.value);
+                }
+
+                if (potenciaInput.value) {
+                    dados.append("potencia", potenciaInput.value);
+                }
+            }
+
+            const resposta = await fetch("/Painel/Iniciar", {
+                method: "POST",
+                headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                body: dados
+            });
+
+            if (!resposta.ok) {
+                const erro = await resposta.json();
+                mostrarErro(erro.mensagem);
+                return;
+            }
+
+            atualizarTela(await resposta.json());
+            iniciarContador();
+        }
+
+        async function processarSegundo() {
+            const resposta = await fetch("/Painel/ProcessarSegundo", {
+                method: "POST"
+            });
+
+            const dados = await resposta.json();
+            atualizarTela(dados);
+
+            if (dados.estado !== "Aquecendo") {
+                pararContador();
+            }
+        }
+
+        async function pausarOuCancelar() {
+            limparErro();
+
+            const resposta = await fetch("/Painel/PausarOuCancelar", {
+                method: "POST"
+            });
+
+            const dados = await resposta.json();
+            atualizarTela(dados);
+
+            if (dados.estado === "Aquecendo") {
+                iniciarContador();
+                return;
+            }
+
+            pararContador();
+        }
+
+        async function limpar() {
+            limparErro();
+
+            const resposta = await fetch("/Painel/Limpar", {
+                method: "POST"
+            });
+
+            atualizarTela(await resposta.json());
+            pararContador();
+        }
+
+        function iniciarContador() {
+            if (intervalo === null) {
+                intervalo = setInterval(processarSegundo, 1000);
+            }
+        }
+
+        function pararContador() {
+            clearInterval(intervalo);
+            intervalo = null;
+        }
+
+        function atualizarTela(dados) {
+            // Centraliza a sincronização entre o estado retornado pelo backend e a interface.
+            programaSelecionado = dados.programaPreDefinido === true;
+            tempoDisplay.innerText = dados.tempoFormatado;
+            estadoDisplay.innerText = montarEstado(dados);
+            stringAquecimento.innerText = dados.stringAquecimento;
+
+            tempoInput.value = dados.tempoRestante > 0 ? dados.tempoRestante : "";
+            potenciaInput.value = dados.potencia || "";
+            instrucoesPrograma.innerText = dados.instrucoes || "Selecione um programa para ver as instrucoes.";
+
+            bloquearEdicaoManual(programaSelecionado);
+            bloquearTrocaDePrograma(dados.estado === "Aquecendo" || dados.estado === "Pausado");
+            marcarProgramaSelecionado(dados.programaId);
+
+            if (dados.estado === "Parado" && !programaSelecionado) {
+                tempoInput.value = "";
+                potenciaInput.value = "";
+                stringAquecimento.innerText = "";
+                estadoDisplay.innerText = "Potencia 10 | Parado";
+            }
+        }
+
+        function montarEstado(dados) {
+            if (dados.programaNome) {
+                return `${dados.programaNome} | Potencia ${dados.potencia} | ${dados.estado}`;
+            }
+
+            return `Potencia ${dados.potencia} | ${dados.estado}`;
+        }
+
+        function bloquearEdicaoManual(bloquear) {
+            // Ao usar programa de aquecimento, tempo/potência não podem ser alterados.
+            tempoInput.readOnly = bloquear;
+            potenciaInput.readOnly = bloquear;
+            tempoInput.classList.toggle("campo-ativo", !bloquear && campoSelecionado === "tempo");
+            potenciaInput.classList.toggle("campo-ativo", !bloquear && campoSelecionado === "potencia");
+
+            document.querySelectorAll("[data-tecla]").forEach(botao => {
+                botao.disabled = bloquear;
+            });
+        }
+
+        function bloquearTrocaDePrograma(bloquear) {
+            document.querySelectorAll(".programa-botao, .remover-programa").forEach(botao => {
+                botao.disabled = bloquear;
+            });
+        }
+
+        function renderizarProgramas(programas) {
+            programasContainer.innerHTML = "";
+
+            programas.forEach(programa => {
+                const item = document.createElement("div");
+                item.className = "programa-item";
+
+                const botao = document.createElement("button");
+                botao.type = "button";
+                botao.className = programa.customizado ? "programa-botao customizado" : "programa-botao";
+                botao.dataset.programaId = programa.id;
+                botao.title = programa.instrucoes || "";
+                botao.addEventListener("click", () => selecionarPrograma(programa.id));
+
+                const nome = document.createTextNode(programa.nome);
+                const dados = document.createElement("span");
+                dados.className = "programa-tempo";
+                dados.innerText = `${programa.tempoFormatado} | P ${programa.potencia}`;
+
+                botao.appendChild(nome);
+                botao.appendChild(dados);
+                item.appendChild(botao);
+
+                if (programa.customizado) {
+                    const remover = document.createElement("button");
+                    remover.type = "button";
+                    remover.className = "remover-programa";
+                    remover.title = "Remover programa";
+                    remover.innerText = "x";
+                    remover.addEventListener("click", () => removerPrograma(programa.id));
+                    item.appendChild(remover);
+                }
+
+                programasContainer.appendChild(item);
+            });
+        }
+
+        function limparCadastro() {
+            novoNomeInput.value = "";
+            novoAlimentoInput.value = "";
+            novoTempoInput.value = "";
+            novaPotenciaInput.value = "";
+            novoCaractereInput.value = "";
+            novasInstrucoesInput.value = "";
+        }
+
+        function marcarProgramaSelecionado(programaId) {
+            document.querySelectorAll(".programa-botao").forEach(botao => {
+                botao.classList.toggle("selecionado", botao.dataset.programaId === programaId);
+            });
+        }
+
+        function mostrarErro(mensagem) {
+            mensagemErro.innerText = mensagem;
+        }
+
+        function limparErro() {
+            mensagemErro.innerText = "";
+        }
+    </script>
+</body>
+</html>
